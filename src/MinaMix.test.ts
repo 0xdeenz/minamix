@@ -1,11 +1,22 @@
+import { 
+    AccountUpdate, 
+    Field, 
+    MerkleMap, 
+    MerkleTree, 
+    MerkleWitness, 
+    Mina, 
+    Nullifier, 
+    Poseidon,
+    PrivateKey, 
+    PublicKey, 
+} from 'snarkyjs';
 import { MinaMix } from './MinaMix';
-import { Field, Mina, PrivateKey, PublicKey, AccountUpdate, MerkleMap, MerkleTree, Nullifier, MerkleWitness, Poseidon } from 'snarkyjs';
 
 let proofsEnabled = false;
 
 const DENOMINATION = BigInt(1 * 1e9);
 const TREE_HEIGHT = 20;
-class MinaMixMerkleWitness extends MerkleWitness(TREE_HEIGHT) {}
+class MinaMixMerkleWitness extends MerkleWitness(TREE_HEIGHT) {};
 
 describe('MinaMix', () => {
     let denomination: Field,
@@ -65,16 +76,16 @@ describe('MinaMix', () => {
     async function localDeploy() {
         const txn = await Mina.transaction(deployerAccount, () => {
             AccountUpdate.fundNewAccount(deployerAccount);
-            zkApp.deploy();  // TODO: set here the zkAppPrivateKey (?)
+            zkApp.deploy();
 
             zkApp.denomination.set(denomination);
             zkApp.depositRoot.set(DepositTree.getRoot());
             zkApp.nullifierHashRoot.set(NullifierTree.getRoot());
-            zkApp.nullifierMessage.set(zkAppAddress.toFields()[0]);  // TODO: I'm guessing its an (x,y) of the pubkey?
+            zkApp.nullifierMessage.set(zkAppAddress.toFields()[0]);  // prevents replay attacks
         });
         await txn.prove();
         
-        // this tx needs .sign(), because `deploy()` adds an account update that requires signature authorization
+        // This tx needs .sign(), because `deploy()` adds an account update that requires signature authorization
         await txn.sign([deployerKey, zkAppPrivateKey]).send();
     };
 
@@ -105,7 +116,12 @@ describe('MinaMix', () => {
 
             let endBalance = Mina.getAccount(senderAccount).balance;
 
+            // Sender's balance is decreased
             expect(startBalance.sub(endBalance).toBigInt()).toEqual(DENOMINATION);
+
+            // Contract's balance is increased
+            let contractBalance = Mina.getAccount(zkAppAddress).balance;
+            expect(contractBalance.toBigInt()).toEqual(DENOMINATION);
         });
 
         it('updates the deposit tree root', async () => {
@@ -141,7 +157,7 @@ describe('MinaMix', () => {
 
             // New commitment is emitted correctly
             expect(events[1].type).toEqual(
-                'add-commitment'
+                'commitment-added'
             )
             expect(events[1].event.data.toString()).toEqual(
                 commitment.toString()
@@ -165,7 +181,7 @@ describe('MinaMix', () => {
 
             // Now the leaf at index 0 is filled -- the Merkle proof is not valid anymore
             await expect(async () => {
-                zkApp.deposit(secret, nullifier, path);
+                zkApp.deposit(secret, nullifier, path)
             }).rejects.toThrow();
         });
     });
@@ -193,7 +209,12 @@ describe('MinaMix', () => {
 
             let endBalance = Mina.getAccount(recipientAccount).balance;
 
+            // Recipient's balance is increased
             expect(endBalance.sub(startBalance).toBigInt()).toEqual(DENOMINATION);
+
+            // Contract's balance is decreased
+            let contractBalance = Mina.getAccount(zkAppAddress).balance;
+            expect(contractBalance.toBigInt()).toEqual(0n);
         });
 
         it('reverts when given the wrong Merkle proof', async () => {
@@ -201,6 +222,7 @@ describe('MinaMix', () => {
             let commitment = Poseidon.hash([secret, nullifier.key()]);
             NewDepositTree.setLeaf(0n, commitment);
 
+            // Generating a Merkle proof for the wrong index -- the second item in the tree
             let witness = NewDepositTree.getWitness(1n);
             let wrongPath = new MinaMixMerkleWitness(witness);
 
