@@ -1,4 +1,13 @@
 {
   "version": 1,
-  "deployAliases": {}
+  "deployAliases": {
+    "minamix": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/minamix.json",
+      "feepayerKeyPath": "/home/deenz/.cache/zkapp-cli/keys/deenz.json",
+      "feepayerAlias": "deenz",
+      "fee": "0.1",
+      "smartContract": "MinaMix"
+    }
+  }
 }

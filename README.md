@@ -4,6 +4,8 @@ Funds mixer for the [Mina Protocol](https://docs.minaprotocol.com/) built on [Sn
 
 Implemets the basic logic for a funds mixer. Users can deposit their funds into the mixer via the `deposit` function, and withdraw them anonymously via the `withdraw` function. THe quantity that is transacted is fixed by the `denomination` variable.
 
+You can find a live version [here](https://berkeley.minaexplorer.com/transaction/5JuyWgeQSz2bviM7BfFvi37AehsDjBTtYqm7NzKss3k73DFoQ6i8) -- deployed to a TESTNET (NOT REAL MONEY).
+
 Développé avec ❤️ pour le Hackathon d'ETHGlobal Paris 🇫🇷 2023
 
 ## Disclaimers
