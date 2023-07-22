@@ -22,6 +22,9 @@ export class MinaMix extends SmartContract {
     // Nullifier tree root
     @state(Field) nullifierHashRoot = State<Field>();
 
+    // Nullifier message -- set to the smart contract's public key
+    @state(Field) nullifierMessage = State<Field>();
+
     // TODO: add events to manage which nullifiers have been used off-chain
     events = {
         'add-commitment': Field,  // Makes the deposit commitment public
@@ -43,7 +46,7 @@ export class MinaMix extends SmartContract {
         // Compute the commitment = Hash(secret, nullifier)
         let commitment = Poseidon.hash([secret, nullifier.key()]);
 
-        // Verify Merkle path given for the deposit tree is correct
+        // Verify Merkle path given for the deposit tree is correct -- leaf is currently empty
         let depositRoot = this.depositRoot.getAndAssertEquals();
         path.calculateRoot(new Field(0)).assertEquals(depositRoot);
 
@@ -52,8 +55,9 @@ export class MinaMix extends SmartContract {
         this.depositRoot.set(newDepositRoot);
 
         // Emit events to be able to build the deposit tree off-chain
+        
         this.emitEvent('add-commitment', commitment);
-        this.emitEvent('new-deposit-root', depositRoot);
+        this.emitEvent('new-deposit-root', newDepositRoot);
     }
 
     @method withdraw(secret: Field, nullifier: Nullifier, path: MinaMixMerkleWitness, recipient: PublicKey) {
@@ -66,7 +70,7 @@ export class MinaMix extends SmartContract {
 
         // Verify that the nullifier has not been voided yet
         let nullifierHashRoot = this.nullifierHashRoot.getAndAssertEquals();
-        let nullifierMessage = Field(420);  // TODO: set it to be the pubkey of the contract
+        let nullifierMessage = this.nullifierMessage.getAndAssertEquals();
         nullifier.verify([nullifierMessage]);
 
         let nullifierWitness = Circuit.witness(MerkleMapWitness, () =>
